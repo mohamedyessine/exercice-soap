@@ -1,0 +1,14 @@
+<web-app xmlns="http://java.sun.com/xml/ns/javaee" version="3.0">
+    <display-name>CurrencyConverter</display-name>
+
+    <!-- Welcome file -->
+    <welcome-file-list>
+        <welcome-file>index.html</welcome-file>
+    </welcome-file-list>
+
+    <!-- Add a default servlet to serve static resources -->
+    <servlet-mapping>
+        <servlet-name>default</servlet-name>
+        <url-pattern>/</url-pattern>
+    </servlet-mapping>
+</web-app>

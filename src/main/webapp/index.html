@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Currency Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        .form-container {
+            margin-bottom: 20px;
+        }
+
+        .form-container input {
+            margin: 5px 10px;
+        }
+
+        .form-container button {
+            padding: 5px 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .form-container button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+<h1>Currency Converter</h1>
+
+<div class="form-container">
+    <label for="currency">Currency:</label>
+    <input type="text" id="currency" placeholder="e.g., USD">
+
+    <label for="amount">Amount:</label>
+    <input type="number" id="amount" placeholder="e.g., 100">
+
+    <button onclick="convertCurrency()">Convert</button>
+</div>
+
+<h2>Available Currencies</h2>
+<table id="currencies-table">
+    <thead>
+    <tr>
+        <th>#</th>
+        <th>Currency</th>
+    </tr>
+    </thead>
+    <tbody>
+    <!-- Currency rows will be dynamically added here -->
+    </tbody>
+</table>
+
+<h2>Conversion Result</h2>
+<p id="conversion-result">Enter currency and amount to see the result.</p>
+
+<script>
+    // Base URL for your SOAP web service
+    const baseUrl = "http://localhost:8080/CurrencyConverter";
+
+    // Function to fetch available currencies
+    async function fetchCurrencies() {
+        try {
+            const response = await fetch(baseUrl + "?wsdl");
+            const parser = new DOMParser();
+            const wsdl = parser.parseFromString(await response.text(), "application/xml");
+
+            // Make SOAP request to get available currencies
+            const body = `
+                    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://service.glid3.iit.tn/">
+                        <soapenv:Header/>
+                        <soapenv:Body>
+                            <ser:getcurrency/>
+                        </soapenv:Body>
+                    </soapenv:Envelope>
+                `;
+
+            const result = await fetch(baseUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "text/xml",
+                },
+                body: body,
+            });
+
+            const resultText = await result.text();
+            const resultXml = parser.parseFromString(resultText, "application/xml");
+
+            // Extract currencies from SOAP response
+            const currencies = Array.from(resultXml.getElementsByTagName("return")).map(el => el.textContent);
+
+            // Populate the currencies table
+            const tableBody = document.querySelector("#currencies-table tbody");
+            tableBody.innerHTML = "";
+            currencies.forEach((currency, index) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `<td>${index + 1}</td><td>${currency}</td>`;
+                tableBody.appendChild(row);
+            });
+        } catch (error) {
+            console.error("Error fetching currencies:", error);
+        }
+    }
+
+    // Function to convert currency
+    async function convertCurrency() {
+        const currency = document.getElementById("currency").value.toUpperCase();
+        const amount = document.getElementById("amount").value;
+
+        if (!currency || !amount) {
+            alert("Please enter both currency and amount.");
+            return;
+        }
+
+        try {
+            const body = `
+            <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://service.glid3.iit.tn/">
+                <soapenv:Header/>
+                <soapenv:Body>
+                    <ser:Convert>
+                        <curr>${currency}</curr>
+                        <montant>${amount}</montant>
+                    </ser:Convert>
+                </soapenv:Body>
+            </soapenv:Envelope>
+        `;
+            console.log("Sending SOAP request:", body);
+            const response = await fetch(baseUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "text/xml",
+                },
+                body: body,
+            });
+
+            const resultText = await response.text();
+            console.log("SOAP Response:", resultText);
+
+            const parser = new DOMParser();
+            const resultXml = parser.parseFromString(resultText, "application/xml");
+
+            // Extract conversion result
+            const conversionResult = resultXml.getElementsByTagName("return")[0]?.textContent;
+
+            if (conversionResult) {
+                // Display the result
+                document.getElementById("conversion-result").textContent = `Converted Amount: ${conversionResult}`;
+            } else {
+                document.getElementById("conversion-result").textContent = "No conversion result available.";
+            }
+        } catch (error) {
+            console.error("Error converting currency:", error);
+            document.getElementById("conversion-result").textContent = "Error occurred during conversion.";
+        }
+    }
+
+    // Fetch currencies on page load
+    window.onload = fetchCurrencies;
+</script>
+</body>
+</html>
